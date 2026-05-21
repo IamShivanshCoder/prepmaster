@@ -38,10 +38,12 @@ interface PdfDao {
 
     @Transaction
     @Query("SELECT * FROM pdf_items io JOIN bookmarks b ON io.id = b.pdfId")
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     fun getBookmarkedPdfsFlow(): Flow<List<PdfItemDetail>>
 
     @Transaction
     @Query("SELECT * FROM pdf_items io JOIN study_progress sp ON io.id = sp.pdfId ORDER BY sp.lastStudiedAt DESC")
+    @SuppressWarnings(RoomWarnings.QUERY_MISMATCH)
     fun getRecentlyStudiedPdfsFlow(): Flow<List<PdfItemDetail>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
