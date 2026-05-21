@@ -1,0 +1,6 @@
+{
+  "name": "PrepMaster",
+  "description": "Secure exam preparation study portal supporting dynamic dynamic syllabus synchronization, Whitelisted Student Google login, bookmarks, and offline study slides.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

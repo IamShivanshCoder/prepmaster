@@ -1,0 +1,59 @@
+{
+  "whitelist": [
+    "your.email@gmail.com",
+    "student1@gmail.com",
+    "teacher@school.edu"
+  ],
+  "pdfs": [
+    {
+      "id": "chem_reaction_2025",
+      "title": "2025 Organic Chemistry Core Reactions Sheet",
+      "subject": "Chemistry",
+      "category": "Formula Sheets",
+      "exam_type": "pdf",
+      "year": "2025",
+      "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "size": "1.2 MB"
+    },
+    {
+      "id": "math_mock_p2",
+      "title": "2024 National Mathematics Advanced Prep Paper 2",
+      "subject": "Mathematics",
+      "category": "Past Papers",
+      "exam_type": "pdf",
+      "year": "2024",
+      "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "size": "3.5 MB"
+    },
+    {
+      "id": "phys_notes_2025",
+      "title": "2025 Physics Summary Notes — All Topics",
+      "subject": "Physics",
+      "category": "Notes",
+      "exam_type": "pdf",
+      "year": "2025",
+      "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "size": "2.1 MB"
+    },
+    {
+      "id": "cs_syllabus_2025",
+      "title": "2025 Computer Science Syllabus Overview",
+      "subject": "Computer Science",
+      "category": "Syllabus",
+      "exam_type": "pdf",
+      "year": "2025",
+      "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      "size": "0.8 MB"
+    },
+    {
+      "id": "daily_challenge_mock",
+      "title": "Daily Challenge — Mixed Subject Quiz",
+      "subject": "All Subjects",
+      "category": "Daily Challenge",
+      "exam_type": "mcq",
+      "year": "2025",
+      "url": "",
+      "size": "N/A"
+    }
+  ]
+}
