@@ -39,10 +39,37 @@ fun DailyChallengeScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val challengeQuestion = viewModel.dailyChallengeQuestion
+    val challengeQuestion by viewModel.dailyChallengeQuestion.collectAsState()
     val selectedOption by viewModel.dailyChallengeSelectedOption.collectAsState()
     val isAnswered by viewModel.dailyChallengeAnswered.collectAsState()
     val challengeState by viewModel.dailyChallengeState.collectAsState()
+
+    if (challengeQuestion == null) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(BackgroundDeepNavy),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = Icons.Default.MenuBook,
+                    contentDescription = "No challenge icon",
+                    tint = TextMuted,
+                    modifier = Modifier.size(50.dp)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "No daily challenge available today.",
+                    color = TextMuted,
+                    fontSize = 14.sp
+                )
+            }
+        }
+        return
+    }
+
+    val question = challengeQuestion!!
 
     Box(
         modifier = modifier
@@ -93,7 +120,7 @@ fun DailyChallengeScreen(
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "SUBJECT · PHYSICS (MECHANICS)",
+                    text = "SUBJECT · ${question.text.take(30)}",
                     color = SecondaryViolet,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -112,7 +139,7 @@ fun DailyChallengeScreen(
             ) {
                 Column(modifier = Modifier.padding(20.dp)) {
                     Text(
-                        text = challengeQuestion.text,
+                        text = question.text,
                         fontSize = 16.sp,
                         lineHeight = 22.sp,
                         fontWeight = FontWeight.Medium,
@@ -126,33 +153,36 @@ fun DailyChallengeScreen(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        challengeQuestion.options.forEachIndexed { optIdx, optionText ->
+                        question.options.forEachIndexed { optIdx, optionText ->
                             val isSelected = selectedOption == optIdx
                             
+                            val isCorrect = optIdx == question.correctAnswerIndex
+                            val isWrongSelected = isAnswered && isSelected && challengeState?.correct == false
+
                             val containerColor = when {
-                                isAnswered && optIdx == challengeQuestion.correctAnswerIndex -> CorrectGreen
-                                isAnswered && isSelected && !challengeState!!.correct -> ErrorRed
+                                isAnswered && isCorrect -> CorrectGreen
+                                isWrongSelected -> ErrorRed
                                 isSelected -> PrimaryAccentAmber
                                 else -> SurfaceNavy
                             }
 
                             val textColor = when {
-                                isAnswered && optIdx == challengeQuestion.correctAnswerIndex -> BackgroundDeepNavy
-                                isAnswered && isSelected && !challengeState!!.correct -> Color.White
+                                isAnswered && isCorrect -> BackgroundDeepNavy
+                                isWrongSelected -> Color.White
                                 isSelected -> BackgroundDeepNavy
                                 else -> Color.White
                             }
 
                             val circleBgColor = when {
-                                isAnswered && optIdx == challengeQuestion.correctAnswerIndex -> BackgroundDeepNavy.copy(alpha = 0.15f)
-                                isAnswered && isSelected && !challengeState!!.correct -> Color.White.copy(alpha = 0.2f)
+                                isAnswered && isCorrect -> BackgroundDeepNavy.copy(alpha = 0.15f)
+                                isWrongSelected -> Color.White.copy(alpha = 0.2f)
                                 isSelected -> BackgroundDeepNavy.copy(alpha = 0.15f)
                                 else -> BackgroundDeepNavy
                             }
 
                             val circleTextColor = when {
-                                isAnswered && optIdx == challengeQuestion.correctAnswerIndex -> BackgroundDeepNavy
-                                isAnswered && isSelected && !challengeState!!.correct -> Color.White
+                                isAnswered && isCorrect -> BackgroundDeepNavy
+                                isWrongSelected -> Color.White
                                 isSelected -> BackgroundDeepNavy
                                 else -> Color.White
                             }
@@ -167,7 +197,7 @@ fun DailyChallengeScreen(
                                 colors = CardDefaults.cardColors(containerColor = containerColor),
                                 border = androidx.compose.foundation.BorderStroke(
                                     width = 1.dp,
-                                    color = if (isSelected || (isAnswered && optIdx == challengeQuestion.correctAnswerIndex)) containerColor else Color.White.copy(alpha = 0.05f)
+                                    color = if (isSelected || (isAnswered && isCorrect)) containerColor else Color.White.copy(alpha = 0.05f)
                                 )
                             ) {
                                 Row(
@@ -297,7 +327,7 @@ fun DailyChallengeScreen(
                                 .background(CorrectGreen.copy(alpha = 0.15f))
                                 .padding(horizontal = 8.dp, vertical = 2.dp)
                         ) {
-                            val correctLetter = ('A' + challengeQuestion.correctAnswerIndex).toString()
+                            val correctLetter = ('A' + question.correctAnswerIndex).toString()
                             Text(
                                 text = "CORRECT ANSWER: $correctLetter",
                                 fontSize = 10.sp,
@@ -310,7 +340,7 @@ fun DailyChallengeScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
-                        text = challengeQuestion.explanation,
+                        text = question.explanation,
                         color = TextMuted,
                         fontSize = 13.sp,
                         lineHeight = 18.sp
