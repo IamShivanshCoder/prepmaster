@@ -45,6 +45,7 @@ fun PapersLibraryScreen(
     val allPdfs by viewModel.allPdfs.collectAsState()
     val bookmarkedByDb by viewModel.bookmarkedPdfs.collectAsState()
     val attempts by viewModel.allAttempts.collectAsState()
+    val isLibraryLoading by viewModel.isLibraryLoading.collectAsState()
 
     // Top Exam Filters
     var selectedExamTab by remember { mutableStateOf("JEE") }
@@ -299,7 +300,16 @@ fun PapersLibraryScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         // Card Grid: 2 columns on mobile device layout
-        if (filteredPdfs.isEmpty()) {
+        if (isLibraryLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(color = PrimaryAccentAmber)
+            }
+        } else if (filteredPdfs.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

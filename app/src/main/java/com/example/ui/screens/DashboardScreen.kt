@@ -370,7 +370,7 @@ fun DashboardScreen(
                     Card(
                         modifier = Modifier
                             .width(225.dp)
-                            .clickable { viewModel.selectPdf(paper.id) },
+                            .clickable { viewModel.openPaper(paper.id, paper.title, paper.subject) },
                         shape = RoundedCornerShape(12.dp),
                         colors = CardDefaults.cardColors(containerColor = SurfaceNavy),
                         border = BoxBorder()

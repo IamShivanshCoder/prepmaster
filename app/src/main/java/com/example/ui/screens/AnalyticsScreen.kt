@@ -153,9 +153,24 @@ fun AnalyticsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Chart 1: Topic-wise accuracy Bar Chart
+        // Chart 1: Subject-wise accuracy Bar Chart
+        val subjectAccuracy = remember(attempts) {
+            if (attempts.isEmpty()) emptyList()
+            else {
+                attempts.groupBy { it.subject }
+                    .mapValues { (_, vals) ->
+                        val correct = vals.sumOf { it.score }
+                        val total = vals.sumOf { it.totalQuestions }
+                        if (total == 0) 0f else (correct * 100f) / total
+                    }
+                    .entries
+                    .sortedByDescending { it.value }
+                    .take(5)
+            }
+        }
+
         Text(
-            text = "ACCURACY BY ACC REDUCTION",
+            text = "ACCURACY BY SUBJECT",
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             color = PrimaryAccentAmber,
@@ -171,7 +186,7 @@ fun AnalyticsScreen(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Topic-wise accuracy broken down",
+                    text = "Accuracy across subjects",
                     color = Color.White,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold
@@ -179,54 +194,51 @@ fun AnalyticsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Bar chart drawing on Canvas
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(150.dp)
-                ) {
-                    val topics = listOf(
-                        Pair("Mechanics", 84f),
-                        Pair("Kinetics", 72f),
-                        Pair("Organic", 63f),
-                        Pair("Calculus", 90f),
-                        Pair("Algebra", 78f)
+                if (subjectAccuracy.isEmpty()) {
+                    Text(
+                        text = "Complete exams to see subject-wise accuracy",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(vertical = 24.dp)
                     )
+                } else {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                    ) {
+                        val barWidth = 24.dp.toPx()
+                        val spacing = (size.width - (barWidth * subjectAccuracy.size)) / (subjectAccuracy.size + 1)
 
-                    val barWidth = 24.dp.toPx()
-                    val spacing = (size.width - (barWidth * topics.size)) / (topics.size + 1)
+                        subjectAccuracy.forEachIndexed { index, (_, pct) ->
+                            val x = spacing + index * (barWidth + spacing)
+                            val barHeight = (pct / 100f) * size.height
 
-                    topics.forEachIndexed { index, (topic, pct) ->
-                        val x = spacing + index * (barWidth + spacing)
-                        val barHeight = (pct / 100f) * size.height
-
-                        // Draw golden bar
-                        drawRoundRect(
-                            color = PrimaryAccentAmber,
-                            topLeft = Offset(x, size.height - barHeight),
-                            size = Size(barWidth, barHeight),
-                            cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
-                        )
+                            drawRoundRect(
+                                color = PrimaryAccentAmber,
+                                topLeft = Offset(x, size.height - barHeight),
+                                size = Size(barWidth, barHeight),
+                                cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
+                            )
+                        }
                     }
-                }
 
-                // Bar Labels Row
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    val topics = listOf("Mech", "Kin", "Org", "Calc", "Alg")
-                    topics.forEach { name ->
-                        Text(
-                            text = name,
-                            color = TextMuted,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.width(36.dp)
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceAround
+                    ) {
+                        subjectAccuracy.forEach { (subject, _) ->
+                            Text(
+                                text = subject.take(4),
+                                color = TextMuted,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.width(36.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -235,8 +247,28 @@ fun AnalyticsScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // Chart 2: Accuracy Over last 30 days Line Graph
+        val accuracyTrend = remember(attempts) {
+            if (attempts.isEmpty()) emptyList()
+            else {
+                attempts.sortedBy { it.completedAt }
+                    .map { a ->
+                        if (a.totalQuestions == 0) 0f else (a.score * 100f) / a.totalQuestions
+                    }
+                    .let { list ->
+                        // Smooth: take at most 8 evenly spaced points
+                        if (list.size <= 8) list
+                        else {
+                            val step = list.size.toFloat() / 8f
+                            (0 until 8).map { i ->
+                                list[(i * step).toInt().coerceAtMost(list.lastIndex)]
+                            }
+                        }
+                    }
+            }
+        }
+
         Text(
-            text = "30-DAY PRACTICE TRACKS",
+            text = "ACCURACY TREND",
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             color = PrimaryAccentAmber,
@@ -260,79 +292,81 @@ fun AnalyticsScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Winding golden line on custom Canvas with dark grid lines
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp)
-                ) {
-                    val points = listOf(65f, 72f, 68f, 80f, 75f, 87f, 83f, 92f)
-                    val stepX = size.width / (points.size - 1)
-                    val path = Path()
+                if (accuracyTrend.isEmpty()) {
+                    Text(
+                        text = "Complete exams to see your accuracy trend",
+                        color = TextMuted,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(vertical = 24.dp)
+                    )
+                } else {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp)
+                    ) {
+                        val points = accuracyTrend
+                        val stepX = size.width / (points.size - 1).coerceAtLeast(1)
+                        val path = Path()
 
-                    // Grid Horizontal lines
-                    val gridLines = 4
-                    for (i in 0..gridLines) {
-                        val y = (size.height / gridLines) * i
-                        drawLine(
-                            color = Color.White.copy(alpha = 0.05f),
-                            start = Offset(0f, y),
-                            end = Offset(size.width, y),
-                            strokeWidth = 1.dp.toPx()
+                        val gridLines = 4
+                        for (i in 0..gridLines) {
+                            val y = (size.height / gridLines) * i
+                            drawLine(
+                                color = Color.White.copy(alpha = 0.05f),
+                                start = Offset(0f, y),
+                                end = Offset(size.width, y),
+                                strokeWidth = 1.dp.toPx()
+                            )
+                        }
+
+                        points.forEachIndexed { idx, pct ->
+                            val x = idx * stepX
+                            val y = size.height - (pct / 100f * size.height)
+                            if (idx == 0) {
+                                path.moveTo(x, y)
+                            } else {
+                                path.lineTo(x, y)
+                            }
+                        }
+
+                        val fillPath = Path().apply {
+                            addPath(path)
+                            lineTo(size.width, size.height)
+                            lineTo(0f, size.height)
+                            close()
+                        }
+                        drawPath(
+                            path = fillPath,
+                            color = PrimaryAccentAmber.copy(alpha = 0.08f)
                         )
-                    }
 
-                    // Line construction
-                    points.forEachIndexed { idx, pct ->
-                        val x = idx * stepX
-                        val y = size.height - (pct / 100f * size.height)
-                        if (idx == 0) {
-                            path.moveTo(x, y)
-                        } else {
-                            path.lineTo(x, y)
+                        drawPath(
+                            path = path,
+                            color = PrimaryAccentAmber,
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+
+                        points.forEachIndexed { idx, pct ->
+                            val x = idx * stepX
+                            val y = size.height - (pct / 100f * size.height)
+                            drawCircle(
+                                color = PrimaryAccentAmber,
+                                radius = 3.dp.toPx(),
+                                center = Offset(x, y)
+                            )
                         }
                     }
 
-                    // Draw faint amber gradient shape underneath line graph
-                    val fillPath = Path().apply {
-                        addPath(path)
-                        lineTo(size.width, size.height)
-                        lineTo(0f, size.height)
-                        close()
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = "Earliest", color = TextMuted, fontSize = 9.sp)
+                        Text(text = "Latest", color = PrimaryAccentAmber, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                     }
-                    drawPath(
-                        path = fillPath,
-                        color = PrimaryAccentAmber.copy(alpha = 0.08f)
-                    )
-
-                    // Draw golden curve line
-                    drawPath(
-                        path = path,
-                        color = PrimaryAccentAmber,
-                        style = Stroke(width = 2.dp.toPx())
-                    )
-
-                    // Draw golden joints circular dots
-                    points.forEachIndexed { idx, pct ->
-                        val x = idx * stepX
-                        val y = size.height - (pct / 100f * size.height)
-                        drawCircle(
-                            color = PrimaryAccentAmber,
-                            radius = 3.dp.toPx(),
-                            center = Offset(x, y)
-                        )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(text = "30d ago", color = TextMuted, fontSize = 9.sp)
-                    Text(text = "15d ago", color = TextMuted, fontSize = 9.sp)
-                    Text(text = "Today", color = PrimaryAccentAmber, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }

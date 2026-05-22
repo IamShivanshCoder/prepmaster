@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.ui.theme.BackgroundDeepNavy
 import com.example.ui.theme.PrimaryAccentAmber
+import com.example.ui.theme.SurfaceNavy
 import com.example.ui.theme.TextMuted
 import com.example.ui.viewmodel.PrepViewModel
 import java.net.URLEncoder
@@ -40,11 +41,27 @@ fun PdfViewScreen(
 
     // Let's run a timer for study duration in timed mode!
     var timerSeconds by remember { mutableStateOf(1200) } // 20 minutes countdown!
+    var showTimeUpDialog by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         while (timerSeconds > 0) {
             kotlinx.coroutines.delay(1000)
             timerSeconds--
         }
+        showTimeUpDialog = true
+    }
+
+    if (showTimeUpDialog) {
+        AlertDialog(
+            onDismissRequest = { showTimeUpDialog = false; viewModel.navigateBack() },
+            title = { Text("Time's Up!", color = Color.White) },
+            text = { Text("Your 20-minute study session has ended.", color = TextMuted) },
+            confirmButton = {
+                TextButton(onClick = { showTimeUpDialog = false; viewModel.navigateBack() }) {
+                    Text("Go Back", color = PrimaryAccentAmber)
+                }
+            },
+            containerColor = SurfaceNavy
+        )
     }
 
     if (detail == null) {
@@ -89,7 +106,7 @@ fun PdfViewScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        viewModel.navigateTo("library")
+                        viewModel.navigateBack()
                     }) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,

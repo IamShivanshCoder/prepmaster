@@ -24,7 +24,9 @@ data class ExamQuestion(
     val text: String,
     val options: List<String>,
     val correctAnswerIndex: Int,
-    val explanation: String
+    val explanation: String,
+    val subject: String = "",
+    val topic: String = ""
 )
 
 class PrepViewModel(application: Application) : AndroidViewModel(application) {
@@ -119,6 +121,9 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
     private val _currentQuestionIndex = MutableStateFlow(0)
     val currentQuestionIndex: StateFlow<Int> = _currentQuestionIndex.asStateFlow()
 
+    private val _isLibraryLoading = MutableStateFlow(true)
+    val isLibraryLoading: StateFlow<Boolean> = _isLibraryLoading.asStateFlow()
+
     // Selected options map: question index -> option index
     private val _examSelectedOptions = MutableStateFlow<Map<Int, Int>>(emptyMap())
     val examSelectedOptions: StateFlow<Map<Int, Int>> = _examSelectedOptions.asStateFlow()
@@ -135,6 +140,7 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
     init {
         viewModelScope.launch {
             pdfRepository.seedDatabaseIfEmpty()
+            _isLibraryLoading.value = false
             _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
             _configUrlInput.value = pdfRepository.getRemoteConfigUrl()
             
@@ -260,7 +266,7 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
             if (res.isSuccess) {
                 // Initialize/Update streak on successful login
                 updateStreakOnLogin()
-                _currentScreen.value = "dashboard"
+                navigateTo("dashboard")
             }
             _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
             onCompleted(res)
@@ -300,6 +306,7 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
             if (result.isSuccess) {
                 pdfRepository.saveRemoteConfigUrl(urlToSync)
                 _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
+                _isLibraryLoading.value = false
                 loadDailyChallengeForToday()
                 _syncState.value = SyncState.Success("Secure database synced and whitelist reloaded!")
             } else {
@@ -397,7 +404,9 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
                     text = questionEntity.question,
                     options = questionEntity.optionsList.split("||"),
                     correctAnswerIndex = questionEntity.correctIndex,
-                    explanation = questionEntity.explanation
+                    explanation = questionEntity.explanation,
+                    subject = questionEntity.subject,
+                    topic = questionEntity.topic
                 )
             } else {
                 _dailyChallengeQuestion.value = null
@@ -460,16 +469,13 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
 
         // Cancel previous timer
         examTimerJob?.cancel()
-        examTimerJob = viewModelScope.launch(Dispatchers.Default) {
+        examTimerJob = viewModelScope.launch {
             while (isActive && _examTimeRemaining.value > 0) {
                 delay(1000)
                 _examTimeRemaining.value -= 1
             }
             if (_examTimeRemaining.value <= 0) {
-                // Auto submit when times out
-                withContext(Dispatchers.Main) {
-                    endExamAttempt()
-                }
+                endExamAttempt()
             }
         }
         navigateTo("attempt")

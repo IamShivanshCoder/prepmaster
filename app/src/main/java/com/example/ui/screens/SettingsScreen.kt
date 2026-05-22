@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -51,6 +52,14 @@ fun SettingsScreen(
     
     // Notifications toggle
     val currentStreak = streakStats?.currentStreak ?: 0
+
+    // Auto-clear sync state after 4 seconds
+    LaunchedEffect(syncState) {
+        if (syncState is SyncState.Success || syncState is SyncState.Error) {
+            kotlinx.coroutines.delay(4000)
+            viewModel.clearSyncState()
+        }
+    }
 
     Column(
         modifier = modifier
