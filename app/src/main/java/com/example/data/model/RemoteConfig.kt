@@ -31,6 +31,7 @@ data class RemoteDailyChallenge(
 @JsonClass(generateAdapter = true)
 data class RemoteConfig(
     @Json(name = "whitelist") val whitelist: List<String> = emptyList(),
+    @Json(name = "users") val users: Map<String, String> = emptyMap(),
     @Json(name = "pdfs") val pdfs: List<RemotePdfItem> = emptyList(),
     @Json(name = "daily_challenges") val dailyChallenges: List<RemoteDailyChallenge> = emptyList()
 )

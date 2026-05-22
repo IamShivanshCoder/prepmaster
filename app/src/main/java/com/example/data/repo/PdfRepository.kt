@@ -31,19 +31,42 @@ class PdfRepository(
         sharedPrefs.edit().putString("remote_config_url", url).apply()
     }
 
-    // Get cached whitelist emails
+    // Get cached whitelist emails (from whitelist list + users map keys)
     fun getWhitelistedEmails(): Set<String> {
-        val defaultWhitelist = setOf(
-            "spam.iamshivanshcoder@gmail.com",
-            "exammanager@gmail.com",
-            "student@school.edu",
-            "testuser@gmail.com" // Pre-added for easy testing
-        )
-        return sharedPrefs.getStringSet("whitelisted_emails", defaultWhitelist) ?: defaultWhitelist
+        val fromWhitelist = sharedPrefs.getStringSet("whitelisted_emails", setOf()) ?: setOf()
+        val fromUsers = getSyncedUsers().keys
+        val merged = fromWhitelist + fromUsers
+        if (merged.isEmpty()) {
+            return setOf(
+                "spam.iamshivanshcoder@gmail.com",
+                "exammanager@gmail.com",
+                "student@school.edu",
+                "testuser@gmail.com"
+            )
+        }
+        return merged
     }
 
     fun saveWhitelistedEmails(emails: Set<String>) {
         sharedPrefs.edit().putStringSet("whitelisted_emails", emails).apply()
+    }
+
+    // Get synced user credentials map (email -> password_hash)
+    fun getSyncedUsers(): Map<String, String> {
+        val json = sharedPrefs.getString("synced_users", "") ?: ""
+        if (json.isBlank()) return emptyMap()
+        return try {
+            val pairs = json.split(";;").mapNotNull { entry ->
+                val parts = entry.split("::", limit = 2)
+                if (parts.size == 2) parts[0] to parts[1] else null
+            }
+            pairs.toMap()
+        } catch (e: Exception) { emptyMap() }
+    }
+
+    fun saveSyncedUsers(users: Map<String, String>) {
+        val json = users.entries.joinToString(";;") { "${it.key}::${it.value}" }
+        sharedPrefs.edit().putString("synced_users", json).apply()
     }
 
     // Observables from Local Database
@@ -93,6 +116,12 @@ class PdfRepository(
             if (remoteConfig.whitelist.isNotEmpty()) {
                 saveWhitelistedEmails(remoteConfig.whitelist.toSet())
                 Log.d("PdfRepository", "Synced ${remoteConfig.whitelist.size} allowed accounts from online whitelist")
+            }
+
+            // 2.5 Process user credentials (email -> hashed password)
+            if (remoteConfig.users.isNotEmpty()) {
+                saveSyncedUsers(remoteConfig.users)
+                Log.d("PdfRepository", "Synced ${remoteConfig.users.size} user credentials from online source")
             }
 
             // 3. Process daily challenges
@@ -261,5 +290,18 @@ class PdfRepository(
         )
 
         pdfDao.insertPdfItems(sampleItems)
+
+        // Seed default user credentials so login works out of the box without remote sync
+        val existingUsers = getSyncedUsers()
+        if (existingUsers.isEmpty()) {
+            saveSyncedUsers(
+                mapOf(
+                    "spam.iamshivanshcoder@gmail.com" to "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    "exammanager@gmail.com" to "6ee4a469cd4e91053847f5d3fcb61dbcc91e8f0ef10be7748da4c4a1ba382d17",
+                    "student@school.edu" to "264c8c381bf16c982a4e59b0dd4c6f7808c51a05f64c35db42cc78a2a72875bb",
+                    "testuser@gmail.com" to "ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae"
+                )
+            )
+        }
     }
 }

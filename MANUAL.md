@@ -47,6 +47,25 @@ To remove student access, simply delete their email from the file and run a sync
 
 You don't need expensive web hosting or databases to keep your PDFs online. You can host them on **GitHub, Google Drive, OneDrive, or Gist** and catalog them inside your database.
 
+### User Password Management
+
+The `"users"` section stores email-password pairs for centralized login. Passwords are **SHA-256 hashed** (never stored in plaintext).
+
+To generate a SHA-256 hash for a password, use any online SHA-256 generator or run:
+```
+echo -n "yourpassword" | sha256sum
+```
+
+**Default passwords for sample accounts:**
+| Email | Password |
+|-------|----------|
+| `spam.iamshivanshcoder@gmail.com` | `admin` |
+| `exammanager@gmail.com` | `manager` |
+| `student@school.edu` | `student` |
+| `testuser@gmail.com` | `test123` |
+
+> **Note:** If a user exists in `"users"`, the password is verified against the synced hash. If not found in `"users"` but present in `"whitelist"`, the app falls back to per-device password (first login sets the password locally).
+
 Each PDF entry is defined by these simple keys:
 - **`id`**: A short, unique identifier for the document (e.g. `math_2025_p1`).
 - **`title`**: The name shown to students (e.g. `2025 Mathematics Board Prep Paper`).
@@ -73,6 +92,11 @@ Let's set up a completely free, live online index that updates in **1-click**:
     "student1@gmail.com",
     "testcandidate@gmail.com"
   ],
+  "users": {
+    "spam.iamshivanshcoder@gmail.com": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "student1@gmail.com": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+    "testcandidate@gmail.com": "ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae"
+  },
   "pdfs": [
     {
       "id": "chem_reaction_2025",

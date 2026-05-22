@@ -77,7 +77,7 @@ Navigation is handled via `MutableStateFlow<String>` in `PrepViewModel`, NOT Jet
 ### Remote JSON Models (`RemoteConfig.kt`)
 - **`RemotePdfItem`** — id, title, subject, category, examType (default "pdf"), year, url, size
 - **`RemoteDailyChallenge`** — id, date, subject, topic, question, options, correctIndex, explanation, avgTimeMinutes
-- **`RemoteConfig`** — whitelist, pdfs, dailyChallenges
+- **`RemoteConfig`** — whitelist, users (email→sha256 map), pdfs, dailyChallenges
 
 ### ViewModel Models (`PrepViewModel.kt`)
 - **`ExamQuestion`** — id, text, options, correctAnswerIndex, explanation
@@ -113,8 +113,8 @@ The `examType` field defaults to `"pdf"` if missing from JSON.
 ## Auth Flow
 1. User enters email + password on LoginScreen
 2. Checks whitelist (SharedPreferences) OR hardcoded admin emails
-3. If first login for email, stores password in SharedPreferences
-4. Subsequent logins verify password against stored value
+3. Checks synced user credentials (from remote JSON `users` map) — hashes entered password with SHA-256 and compares
+4. If user exists in synced credentials, verifies hash; otherwise falls back to per-device password storage in SharedPreferences
 5. Creates `UserSessionEntity` in Room
 6. Updates streak stats on login
 
@@ -142,6 +142,10 @@ to direct download: `https://docs.google.com/uc?export=download&id=FILE_ID`
 ```json
 {
   "whitelist": ["email1@gmail.com", "email2@gmail.com"],
+  "users": {
+    "email1@gmail.com": "sha256_hex_hash_of_password",
+    "email2@gmail.com": "sha256_hex_hash_of_password"
+  },
   "pdfs": [
     {
       "id": "unique_id",

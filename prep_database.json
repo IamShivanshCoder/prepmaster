@@ -1,9 +1,16 @@
 {
   "whitelist": [
-    "your.email@gmail.com",
-    "student1@gmail.com",
-    "teacher@school.edu"
+    "spam.iamshivanshcoder@gmail.com",
+    "exammanager@gmail.com",
+    "student@school.edu",
+    "testuser@gmail.com"
   ],
+  "users": {
+    "spam.iamshivanshcoder@gmail.com": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+    "exammanager@gmail.com": "6ee4a469cd4e91053847f5d3fcb61dbcc91e8f0ef10be7748da4c4a1ba382d17",
+    "student@school.edu": "264c8c381bf16c982a4e59b0dd4c6f7808c51a05f64c35db42cc78a2a72875bb",
+    "testuser@gmail.com": "ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae"
+  },
   "pdfs": [
     {
       "id": "chem_reaction_2025",

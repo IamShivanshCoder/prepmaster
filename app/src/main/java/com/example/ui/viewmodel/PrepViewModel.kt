@@ -8,6 +8,7 @@ import com.example.data.repo.AuthRepository
 import com.example.data.repo.PdfRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -248,17 +249,29 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            // Check if password has been set/initialized for this user
-            val prefs = getApplication<android.app.Application>().getSharedPreferences("preppapers_auth_pref", android.content.Context.MODE_PRIVATE)
-            val storedPassword = prefs.getString("pwd_$trimmedEmail", null)
+            // Check against synced user credentials (from remote JSON)
+            val syncedUsers = pdfRepository.getSyncedUsers()
+            val syncedHash = syncedUsers[trimmedEmail]
+            val enteredHash = sha256(passwordEntered)
 
-            if (storedPassword == null) {
-                // Password initialization! Set entered password as their initialized password.
-                prefs.edit().putString("pwd_$trimmedEmail", passwordEntered).apply()
-            } else {
-                if (storedPassword != passwordEntered) {
-                    onCompleted(Result.failure(Exception("Incorrect password for this account. Please enter correct credentials.")))
+            if (syncedHash != null) {
+                // User exists in centralized credential store — verify hash
+                if (syncedHash != enteredHash) {
+                    onCompleted(Result.failure(Exception("Incorrect password for this account.")))
                     return@launch
+                }
+            } else {
+                // Fallback: per-device password (backward compat for local-only users)
+                val prefs = getApplication<android.app.Application>().getSharedPreferences("preppapers_auth_pref", android.content.Context.MODE_PRIVATE)
+                val storedPassword = prefs.getString("pwd_$trimmedEmail", null)
+
+                if (storedPassword == null) {
+                    prefs.edit().putString("pwd_$trimmedEmail", passwordEntered).apply()
+                } else {
+                    if (storedPassword != passwordEntered) {
+                        onCompleted(Result.failure(Exception("Incorrect password for this account. Please enter correct credentials.")))
+                        return@launch
+                    }
                 }
             }
 
@@ -595,5 +608,11 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
                 ExamQuestion(5, "In Git, which command stages changes before committing?", listOf("git stage", "git add", "git save", "git index"), 1, "The command 'git add' moves working changes into staging index.")
             )
         }
+    }
+
+    private fun sha256(input: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        return digest.digest(input.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
     }
 }
