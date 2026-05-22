@@ -2,6 +2,7 @@ package com.example.data.repo
 
 import android.content.Context
 import android.util.Log
+import com.example.BuildConfig
 import com.example.data.db.SessionDao
 import com.example.data.db.UserSessionEntity
 import com.example.data.net.FirebaseAuthService
@@ -14,8 +15,7 @@ class AuthRepository(
 ) {
     private val firebaseAuthService = FirebaseAuthService.create()
     private val firebaseApiKey: String? = try {
-        val cls = Class.forName("${context.packageName}.BuildConfig")
-        cls.getField("FIREBASE_API_KEY").get(null) as? String
+        BuildConfig.FIREBASE_API_KEY.takeIf { it.isNotBlank() && !it.startsWith("YOUR_") }
     } catch (e: Exception) { null }
 
     // Flow observing the currently active session
@@ -27,7 +27,6 @@ class AuthRepository(
     // Returns true if Firebase is configured and auth succeeds
     suspend fun verifyWithFirebase(email: String, password: String): Result<Boolean> {
         val apiKey = firebaseApiKey ?: return Result.failure(Exception("Firebase not configured"))
-        if (apiKey.isBlank()) return Result.failure(Exception("Firebase API key not set"))
 
         return try {
             val response = firebaseAuthService.signInWithPassword(
@@ -56,7 +55,6 @@ class AuthRepository(
             return Result.failure(Exception("Email cannot be empty"))
         }
 
-        // Get synced allowed whitelist emails
         val allowedEmails = pdfRepository.getWhitelistedEmails()
         
         Log.d("AuthRepository", "Verifying login for $trimmedEmail against whitelist entries: $allowedEmails")
@@ -74,25 +72,21 @@ class AuthRepository(
             return Result.success(session)
         } else {
             return Result.failure(
-                Exception("The Google Account '$trimmedEmail' is not authorized to use the PrepPapers study portal. Please contact your administrator to whitelist your email address.")
+                Exception("The account '$trimmedEmail' is not authorized to use the PrepPapers study portal.")
             )
         }
     }
 
-    // Determine role of email from whitelist set
     private fun getWhitelistedEmailRole(email: String, whitelistedSet: Set<String>): String? {
         val search = email.trim().lowercase()
         
-        // Failsafe for the creator/developer
         if (search == "spam.iamshivanshcoder@gmail.com") {
             return "admin"
         }
 
         for (entry in whitelistedSet) {
             val cleaned = entry.trim().lowercase()
-            if (cleaned == search) {
-                return "user"
-            }
+            if (cleaned == search) return "user"
             if (cleaned.startsWith("$search:")) {
                 val parsedRole = cleaned.substringAfter(":", "user")
                 return if (parsedRole.isNotBlank()) parsedRole else "user"
@@ -101,7 +95,6 @@ class AuthRepository(
         return null
     }
 
-    // Terminate user session
     suspend fun logout() {
         sessionDao.clearSession()
     }

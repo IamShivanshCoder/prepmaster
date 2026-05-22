@@ -19,7 +19,8 @@ Welcome to **PrepMaster**, your high-fidelity, secure exam preparation applicati
 
 PrepMaster uses a **hybrid synchronization engine** designed to hide all technical operations from your students:
 - **Local Cache (Room Database)**: The application stores notes, books, daily streaks, bookmarks, and user session keys locally on the student's device. The app works **100% offline**, allowing students to read condensed "Syllabus Cards" even in areas with no internet.
-- **Dynamic Synchronizer (Remote Index)**: When students are online, the app checks a single raw configuration link (configured by you) pointing to a text file (JSON format) containing your PDF document list and authorized emails list.
+- **Dynamic Synchronizer (Remote Index)**: When students are online, the app checks a single raw configuration link (configured by you) pointing to a text file (JSON format) containing your PDF document list, authorized emails list, and user credentials.
+- **Firebase Authentication (Optional)**: For production deployments, the app can verify credentials via Firebase's secure REST API. If Firebase is unavailable or not configured, it falls back to local JSON-based verification.
 
 ---
 
@@ -156,8 +157,9 @@ Once your custom JSON database is configured online:
 2. Authenticate with a whitelisted Google Account (e.g. `spam.iamshivanshcoder@gmail.com`).
 3. Tap on the **Admin** tab at the bottom right.
 4. Input your Raw Gist/GitHub JSON link in the input box.
-5. Tap **Verify & Dynamic Cache Sync**.
+5. Tap **Sync Database & Whitelist**.
 6. The sync state dialog will verify the server file, download all materials, and securely update student permissions on-the-fly!
+7. A green checkmark confirming sync appears for 4 seconds and then clears automatically.
 
 ---
 
@@ -193,9 +195,10 @@ For production deployments, PrepMaster supports **Firebase Authentication** for 
    - Under **Your apps**, copy the **Web API Key** (e.g. `AIzaSyA1B2C3D4E5F6G7H8I9J0K`)
 
 5. **Configure the app**
-   - Open the `.env` file in the project folder
+   - Open the `.env` file in the project folder (copy from `.env.example` if it doesn't exist)
    - Set: `FIREBASE_API_KEY=AIzaSyA1B2C3D4E5F6G7H8I9J0K`
-   - (Replace with your actual API key from step 4)
+   - (Replace with your actual API key from step 4 — the placeholder `YOUR_FIREBASE_API_KEY_HERE` will not activate Firebase)
+   - If your users already exist in the JSON `users` section with SHA-256 hashes, they'll continue to work as fallback
 
 ### Security Benefits over JSON approach
 - **Hashed passwords server-side** — Firebase never transmits plaintext passwords
