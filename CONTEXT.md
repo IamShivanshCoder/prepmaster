@@ -174,7 +174,7 @@ After any successful auth tier, creates `UserSessionEntity` in Room and updates 
 | `spam.iamshivanshcoder@gmail.com` | `admin` | admin |
 | `exammanager@gmail.com` | `manager` | admin |
 | `student@school.edu` | `student` | user |
-| `testuser@gmail.com` | `test123` | user |
+| `testuser@gmail.com` | `12345678` | user |
 
 To generate a SHA-256 hash for a new password: `echo -n "yourpassword" | sha256sum`
 

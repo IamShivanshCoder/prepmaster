@@ -63,7 +63,7 @@ echo -n "yourpassword" | sha256sum
 | `spam.iamshivanshcoder@gmail.com` | `admin` |
 | `exammanager@gmail.com` | `manager` |
 | `student@school.edu` | `student` |
-| `testuser@gmail.com` | `test123` |
+| `testuser@gmail.com` | `12345678` |
 
 > **Note:** If a user exists in `"users"`, the password is verified against the synced hash. If not found in `"users"` but present in `"whitelist"`, the app falls back to per-device password (first login sets the password locally).
 
@@ -96,7 +96,7 @@ Let's set up a completely free, live online index that updates in **1-click**:
   "users": {
     "spam.iamshivanshcoder@gmail.com": "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
     "student1@gmail.com": "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
-    "testcandidate@gmail.com": "ecd71870d1963316a97e3ac3408c9835ad8cf0f3c1bc703527c30265534f75ae"
+    "testcandidate@gmail.com": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f"
   },
   "pdfs": [
     {
