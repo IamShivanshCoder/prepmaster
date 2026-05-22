@@ -158,6 +158,9 @@ The `examType` field defaults to `"pdf"` if missing from JSON.
 16. **JSON stores only admin list** — `users` map (email→hash) replaced with `admins` array (email list). No passwords, no hashes, no credentials in JSON.
 17. **Role determination** — Firebase success + in `admins` list → admin; Firebase success + not in `admins` → user; not in Firebase → rejected.
 18. **CI secrets injection** — GitHub Actions workflow injects `GEMINI_API_KEY` and `FIREBASE_API_KEY` from repo secrets into `.env` at build time.
+19. **Moshi annotations** — Added `@JsonClass(generateAdapter = true)` to `FirebaseSignInResponse` and `FirebaseErrorBody` so Moshi KSP codegen can deserialize Firebase REST API responses.
+20. **Real Firebase error messages** — Login screen now shows the actual Firebase error (e.g. "EMAIL_NOT_FOUND", "INVALID_PASSWORD", "Firebase not configured") instead of a generic message.
+21. **Removed whitelist gate** — Deleted redundant whitelist authorization check in `tryLoginWithGoogleEmail()`; Firebase is the sole gatekeeper.
 
 ## Theme Colors
 - `PrimaryAccentAmber` — `#f59e0b` (CTAs, highlights)
