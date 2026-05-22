@@ -137,15 +137,13 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
 
     private var examTimerJob: Job? = null
 
+    private var periodicRefreshJob: Job? = null
+
     init {
         viewModelScope.launch {
-            // Always sync remote config on startup so papers resolve from the remote JSON
-            val url = pdfRepository.getRemoteConfigUrl()
-            pdfRepository.syncRemoteConfig(url)
-            _isLibraryLoading.value = false
-            _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
-            _configUrlInput.value = pdfRepository.getRemoteConfigUrl()
-            
+            refreshData()
+            startPeriodicRefresh()
+
             // Check session
             val session = authRepository.getActiveSession()
             val startScreen = if (session != null) "dashboard" else "login"
@@ -300,6 +298,27 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearSyncState() {
         _syncState.value = SyncState.Idle
+    }
+
+    fun refreshData() {
+        viewModelScope.launch {
+            val url = pdfRepository.getRemoteConfigUrl()
+            pdfRepository.syncRemoteConfig(url)
+            _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
+            _isLibraryLoading.value = false
+            loadDailyChallengeForToday()
+        }
+    }
+
+    private fun startPeriodicRefresh() {
+        periodicRefreshJob?.cancel()
+        periodicRefreshJob = viewModelScope.launch {
+            while (isActive) {
+                delay(300_000)
+                val url = pdfRepository.getRemoteConfigUrl()
+                pdfRepository.syncRemoteConfig(url)
+            }
+        }
     }
 
     // Add and remove items manually via settings for admin dashboard
