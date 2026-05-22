@@ -9,7 +9,7 @@ PrepMaster is a secure Android exam preparation application with Google login wh
 - **Database**: Room (SQLite)
 - **Networking**: Retrofit + Moshi
 - **PDF Viewing**: WebView with Google Docs Viewer (`https://docs.google.com/viewer?url=...&embedded=true`)
-- **Auth**: Google Sign-In with custom whitelist validation
+- **Auth**: Multi-tier: Firebase REST API → JSON SHA-256 hash → Per-device SharedPreferences
 - **Build**: Gradle (Kotlin DSL), Android Studio
 - **AI**: Gemini API (key via `.env` file)
 
@@ -25,17 +25,18 @@ app/src/main/java/com/example/
 │   ├── model/
 │   │   └── RemoteConfig.kt              # Moshi JSON models (RemotePdfItem, RemoteDailyChallenge, RemoteConfig)
 │   ├── net/
-│   │   └── UpdateService.kt             # Retrofit service for remote config fetch
+│   │   ├── UpdateService.kt             # Retrofit service for remote config fetch
+│   │   └── FirebaseAuthService.kt       # Retrofit service for Firebase REST Auth API
 │   └── repo/
-│       ├── AuthRepository.kt            # Authentication + whitelist logic
-│       └── PdfRepository.kt             # PDF data repo, sync, seeding, bookmarks, progress
+│       ├── AuthRepository.kt            # Authentication + whitelist logic + Firebase verify
+│       └── PdfRepository.kt             # PDF data repo, sync, seeding, bookmarks, progress, user credentials
 ├── ui/
 │   ├── screens/
-│   │   ├── AnalyticsScreen.kt           # Score charts, attempt history
+│   │   ├── AnalyticsScreen.kt           # Score charts, attempt history (real data from DB)
 │   │   ├── DailyChallengeScreen.kt      # Daily MCQ quiz
 │   │   ├── DashboardScreen.kt           # Home screen with stats, streak, recent papers
 │   │   ├── ExamAttemptScreen.kt         # MCQ exam with timer, flagging, question grid
-│   │   ├── LoginScreen.kt               # Google sign-in with whitelist check
+│   │   ├── LoginScreen.kt               # Email/password login with whitelist check
 │   │   ├── PapersLibraryScreen.kt       # Full paper listing with filters (exam/subject/year)
 │   │   ├── PdfViewScreen.kt             # WebView PDF viewer via Google Docs
 │   │   └── SettingsScreen.kt            # Admin panel: sync URL, whitelist management
@@ -53,7 +54,7 @@ Navigation is handled via `MutableStateFlow<String>` in `PrepViewModel`, NOT Jet
 
 | Screen ID | Composable | Description |
 |-----------|-----------|-------------|
-| `"login"` | `LoginScreen` | Google sign-in with whitelist validation |
+| `"login"` | `LoginScreen` | Email/password login with whitelist validation |
 | `"dashboard"` | `DashboardScreen` | Home with stats, streak, challenge, recent papers |
 | `"library"` | `PapersLibraryScreen` | Full paper grid with JEE/NEET/Boards/SAT filters |
 | `"attempt"` | `ExamAttemptScreen` | MCQ exam with 30-min timer, flagging, question grid |
@@ -80,8 +81,20 @@ Navigation is handled via `MutableStateFlow<String>` in `PrepViewModel`, NOT Jet
 - **`RemoteConfig`** — whitelist, users (email→sha256 map), pdfs, dailyChallenges
 
 ### ViewModel Models (`PrepViewModel.kt`)
-- **`ExamQuestion`** — id, text, options, correctAnswerIndex, explanation
+- **`ExamQuestion`** — id, text, options, correctAnswerIndex, explanation, subject, topic
 - **`SyncState`** — sealed interface: Idle, Syncing, Success(message), Error(error)
+
+### ViewModel State Flows
+- `currentScreen`, `screenBackStack` — navigation
+- `allPdfs`, `bookmarkedPdfs`, `activePdfDetail` — PDF data
+- `allAttempts`, `dailyStreakStats` — stats
+- `selectedSubject`, `selectedPdfId`, `searchQuery` — UI state
+- `_isLibraryLoading` — loading spinner for PapersLibraryScreen
+- `syncState`, `configUrlInput`, `whitelistedEmails` — admin settings
+- `dailyChallengeQuestion`, `dailyChallengeState`, `dailyChallengeSelectedOption`, `dailyChallengeAnswered` — daily challenge
+- `examQuestions`, `currentQuestionIndex`, `examSelectedOptions`, `examFlaggedQuestions`, `examTimeRemaining` — exam attempt
+- `challengeNotificationEnabled` — preference toggle
+- `activeSession` — logged-in user
 
 ## Key Navigation Methods in PrepViewModel
 - `navigateTo(screen: String)` — pushes screen, clears stack for login/dashboard
@@ -91,7 +104,7 @@ Navigation is handled via `MutableStateFlow<String>` in `PrepViewModel`, NOT Jet
 - `startExamAttempt(pdfId, examName, subject)` — generates subject-based MCQs, starts 30-min timer, navigates to `"attempt"`
 - `selectSubject(subject)` — navigates to `"library"` pre-filtered
 
-## Paper Click Routing (IMPORTANT — Recent Fix)
+## Paper Click Routing
 **"Start Paper" buttons call `viewModel.openPaper()` which routes by `examType`:**
 - `examType == "pdf"` → `PdfViewScreen` (WebView with Google Docs Viewer)
 - `examType == "mcq"` → `ExamAttemptScreen` (MCQ exam with generated questions)
@@ -103,36 +116,75 @@ The `examType` field defaults to `"pdf"` if missing from JSON.
 1. Admin enters raw Gist URL in Settings
 2. `syncDatabase()` → `PdfRepository.syncRemoteConfig()` → Retrofit fetches JSON
 3. Parses `RemoteConfig` → clears and seeds Room DB with new PDFs
-4. Updates whitelist in SharedPreferences
-5. Syncs daily challenges into `DailyChallengeQuestionEntity` table
-6. Default config URL: `https://raw.githubusercontent.com/aistudio-templates/mock-data/main/exam_prep_config.json`
+4. Updates whitelist from `whitelist` array in SharedPreferences
+5. Updates user credentials from `users` map in SharedPreferences (email → sha256 hash)
+6. Syncs daily challenges into `DailyChallengeQuestionEntity` table
+7. Default config URL: `https://raw.githubusercontent.com/aistudio-templates/mock-data/main/exam_prep_config.json`
 
 ## Database Seeding
-`PdfRepository.seedDatabaseIfEmpty()` inserts 9 sample PDF items on first launch (all with `examType = "pdf"` + 1 MCQ entry). All use dummy PDF URLs from w3.org.
+`PdfRepository.seedDatabaseIfEmpty()` inserts 9 sample PDF items on first launch (all with `examType = "pdf"` + 1 MCQ entry). All use dummy PDF URLs from w3.org. Also seeds default user credentials (email → SHA-256 hash) in SharedPreferences so login works without remote sync.
 
-## Auth Flow
-1. User enters email + password on LoginScreen
-2. Checks whitelist (SharedPreferences) OR hardcoded admin emails
-3. Checks synced user credentials (from remote JSON `users` map) — hashes entered password with SHA-256 and compares
-4. If user exists in synced credentials, verifies hash; otherwise falls back to per-device password storage in SharedPreferences
-5. Creates `UserSessionEntity` in Room
-6. Updates streak stats on login
+## Auth Flow (3-tier)
+1. **Firebase Auth (online)** — App calls Firebase REST API with API key from `.env`. If Firebase returns idToken, login succeeds
+2. **JSON SHA-256 hash (offline)** — If Firebase fails/unconfigured, app checks synced `users` map from JSON: hashes entered password with SHA-256 and compares
+3. **Per-device fallback** — If user not in synced users map, falls back to per-device SharedPreferences (first login stores password locally, subsequent logins verify against stored)
+
+After any successful auth tier, creates `UserSessionEntity` in Room and updates streak stats.
+
+## Recent Bug Fixes (Session 2026-05-22)
+
+### Fixed:
+1. **Back stack after login** — `login()` now calls `navigateTo("dashboard")` instead of directly setting `_currentScreen`, fixing broken navigation stack
+2. **DailyChallengeScreen subject tag** — Added `subject`/`topic` fields to `ExamQuestion`; DailyChallengeScreen now displays actual subject instead of question text
+3. **Timer thread safety** — Exam countdown coroutine no longer uses `Dispatchers.Default` (runs on Main, safe for StateFlow mutation)
+4. **PdfViewScreen back button** — Changed from `navigateTo("library")` to `navigateBack()` for proper back navigation
+5. **Dashboard card routing** — Card body click calls `openPaper()` (routes by `examType`) instead of `selectPdf()` (always opens PDF viewer)
+6. **Sync state auto-clear** — Added `LaunchedEffect` in SettingsScreen to clear sync state after 4 seconds
+7. **Analytics charts** — Bar chart and line chart now compute from actual `attempts` data instead of hardcoded mock values
+8. **Typo** — Fixed `"ACCURACY BY ACC REDUCTION"` → `"ACCURACY BY SUBJECT"`
+9. **Loading state** — Added `isLibraryLoading` StateFlow; PapersLibraryScreen shows `CircularProgressIndicator` while PDFs load
+10. **PDF viewer timer** — Timer reaching 0 now shows AlertDialog and navigates back on dismiss
+
+### Added:
+11. **Centralized user credentials** — `users` map in `prep_database.json` with SHA-256 hashed passwords; synced, seeded, verified at login
+12. **Firebase Authentication** — Via REST API (no google-services.json needed). Optional: set `FIREBASE_API_KEY` in `.env` to enable. Falls back gracefully to JSON/SharedPreferences auth
 
 ## Theme Colors
 - `PrimaryAccentAmber` — `#f59e0b` (CTAs, highlights)
-- `SecondaryViolet` — `#8b5cf6` (secondary accents)
+- `SecondaryViolet` — `#8b5cf6` (secondary accents) (Color.kt uses `#6C63FF`)
 - `BackgroundDeepNavy` — `#0a0a1a` (main background)
 - `SurfaceNavy` — `#111128` (card surfaces)
-- `CorrectGreen` — `#22c55e` (success states)
+- `CorrectGreen` — `#22c55e` (success states) (Color.kt uses `#16A34A`)
 - `TextMuted` — `#8888aa` (secondary text)
 
 ## Setup Instructions
 1. Open in Android Studio → let it auto-fix imports
-2. Create `.env` file with `GEMINI_API_KEY=your_key`
+2. Create `.env` file from `.env.example` with:
+   - `GEMINI_API_KEY=your_key` (required for Gemini AI)
+   - `FIREBASE_API_KEY=your_key` (optional; enables Firebase Auth)
 3. Remove `signingConfig = signingConfigs.getByName("debugConfig")` from `app/build.gradle.kts`
 4. Run on emulator/device
 5. Set up GitHub Gist with `prep_database.json` (see `prep_database.json` template in project root)
-6. Paste raw Gist URL in app Settings → Verify & Dynamic Cache Sync
+6. Paste raw Gist URL in app Settings → Sync Database & Whitelist
+
+## Default Accounts (Seeded + JSON template)
+
+| Email | Password | Role |
+|-------|----------|------|
+| `spam.iamshivanshcoder@gmail.com` | `admin` | admin |
+| `exammanager@gmail.com` | `manager` | admin |
+| `student@school.edu` | `student` | user |
+| `testuser@gmail.com` | `test123` | user |
+
+To generate a SHA-256 hash for a new password: `echo -n "yourpassword" | sha256sum`
+
+## Firebase Setup (Optional)
+1. Create project at [Firebase Console](https://console.firebase.google.com/)
+2. Enable **Email/Password** sign-in in Authentication → Sign-in method
+3. Add users in Authentication → Users tab
+4. Copy **Web API Key** from Project Settings → General
+5. Set `FIREBASE_API_KEY=your_key` in `.env`
+6. Rebuild — no google-services.json needed
 
 ## Google Drive PDF Hosting
 Convert share link `https://drive.google.com/file/d/FILE_ID/view?usp=sharing`
@@ -177,8 +229,11 @@ to direct download: `https://docs.google.com/uc?export=download&id=FILE_ID`
 ## Important Implementation Notes
 - `fallbackToDestructiveMigration()` means DB schema changes wipe data — acceptable for this app
 - Exam questions are **generated locally** by `generateQuestionsForSubject()` based on subject keyword matching (Physics/Chemistry/Maths/CS)
-- Timer runs in `viewModelScope` with `Dispatchers.Default`, auto-submits at 0
+- Timer runs in `viewModelScope` (Main dispatcher), auto-submits at 0
 - Streak tracking uses date keys (`yyyy-MM-dd`) — increments if yesterday was active, resets otherwise
 - Bookmark and progress are stored locally in Room — works 100% offline after sync
 - The app uses `AnimatedContent` for screen transitions in `MainActivity.kt`
 - Bottom navigation bar is hidden on login, attempt, and pdf_viewer screens
+- Sync state auto-clears after 4 seconds in SettingsScreen
+- User credentials stored in SharedPreferences as serialized map (`key::value;;key::value`)
+- Login auth chain: Firebase REST API → JSON SHA-256 hash → Per-device SharedPreferences
