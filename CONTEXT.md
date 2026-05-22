@@ -9,7 +9,7 @@ PrepMaster is a secure Android exam preparation application with Google login wh
 - **Database**: Room (SQLite)
 - **Networking**: Retrofit + Moshi
 - **PDF Viewing**: WebView with Google Docs Viewer (`https://docs.google.com/viewer?url=...&embedded=true`)
-- **Auth**: Multi-tier: Firebase REST API → JSON SHA-256 hash → Per-device SharedPreferences
+- **Auth**: Firebase REST API (single source of truth — no JSON passwords, no SharedPreferences fallback)
 - **Build**: Gradle (Kotlin DSL), Android Studio
 - **AI**: Gemini API (key via `.env` file)
 
@@ -78,7 +78,7 @@ Navigation is handled via `MutableStateFlow<String>` in `PrepViewModel`, NOT Jet
 ### Remote JSON Models (`RemoteConfig.kt`)
 - **`RemotePdfItem`** — id, title, subject, category, examType (default "pdf"), year, url, size
 - **`RemoteDailyChallenge`** — id, date, subject, topic, question, options, correctIndex, explanation, avgTimeMinutes
-- **`RemoteConfig`** — whitelist, users (email→sha256 map), pdfs, dailyChallenges
+- **`RemoteConfig`** — whitelist, users (backward compat email→any map), admins (email list), pdfs, dailyChallenges
 
 ### ViewModel Models (`PrepViewModel.kt`)
 - **`ExamQuestion`** — id, text, options, correctAnswerIndex, explanation, subject, topic
@@ -117,19 +117,21 @@ The `examType` field defaults to `"pdf"` if missing from JSON.
 2. `syncDatabase()` → `PdfRepository.syncRemoteConfig()` → Retrofit fetches JSON
 3. Parses `RemoteConfig` → clears and seeds Room DB with new PDFs
 4. Updates whitelist from `whitelist` array in SharedPreferences
-5. Updates user credentials from `users` map in SharedPreferences (email → sha256 hash)
+5. Updates admin emails from `admins` list (or backward compat `users` map keys) in SharedPreferences
 6. Syncs daily challenges into `DailyChallengeQuestionEntity` table
 7. Default config URL: `https://raw.githubusercontent.com/aistudio-templates/mock-data/main/exam_prep_config.json`
 
 ## Database Seeding
-`PdfRepository.seedDatabaseIfEmpty()` inserts 9 sample PDF items on first launch (all with `examType = "pdf"` + 1 MCQ entry). All use dummy PDF URLs from w3.org. Also seeds default user credentials (email → SHA-256 hash) in SharedPreferences so login works without remote sync.
+`PdfRepository.seedDatabaseIfEmpty()` inserts 9 sample PDF items on first launch (all with `examType = "pdf"` + 1 MCQ entry). All use dummy PDF URLs from w3.org. Also seeds default admin emails in SharedPreferences so login works without remote sync.
 
-## Auth Flow (3-tier)
-1. **Firebase Auth (online)** — App calls Firebase REST API with API key from `.env`. If Firebase returns idToken, login succeeds
-2. **JSON SHA-256 hash (offline)** — If Firebase fails/unconfigured, app checks synced `users` map from JSON: hashes entered password with SHA-256 and compares
-3. **Per-device fallback** — If user not in synced users map, falls back to per-device SharedPreferences (first login stores password locally, subsequent logins verify against stored)
-
-After any successful auth tier, creates `UserSessionEntity` in Room and updates streak stats.
+## Auth Flow (Firebase-only)
+- **Firebase is the single source of truth** for authentication. The JSON file stores ONLY an admin list — no passwords, no hashes, no credentials of any kind.
+- When user logs in: Firebase validates credentials → if rejected, login fails → if accepted, check admin list → `"admin"` or `"user"` role.
+- Three possible states:
+  - Not in Firebase → **rejected**, period
+  - In Firebase, not in JSON admin list → **regular user**
+  - In Firebase, and in JSON admin list → **admin**
+- After successful auth, creates `UserSessionEntity` in Room and updates streak stats.
 
 ## Recent Bug Fixes (Session 2026-05-22)
 
@@ -150,6 +152,12 @@ After any successful auth tier, creates `UserSessionEntity` in Room and updates 
 12. **Firebase Authentication** — Via REST API (no google-services.json needed). Optional: set `FIREBASE_API_KEY` in `.env` to enable. Falls back gracefully to JSON/SharedPreferences auth
 13. **Build fix** — `FIREBASE_API_KEY` in `.env.example` uses a placeholder string (not empty) to prevent Secrets Gradle Plugin from generating invalid Java
 14. **AuthRepository refactor** — Uses direct `BuildConfig.FIREBASE_API_KEY` with `.takeIf` filter (skips placeholder values starting with `YOUR_`) instead of fragile reflection
+
+### Refactored (Session 2026-05-22):
+15. **Firebase is single auth source** — Removed all JSON SHA-256 hash and SharedPreferences password fallbacks. Firebase REST API is the only authentication mechanism.
+16. **JSON stores only admin list** — `users` map (email→hash) replaced with `admins` array (email list). No passwords, no hashes, no credentials in JSON.
+17. **Role determination** — Firebase success + in `admins` list → admin; Firebase success + not in `admins` → user; not in Firebase → rejected.
+18. **CI secrets injection** — GitHub Actions workflow injects `GEMINI_API_KEY` and `FIREBASE_API_KEY` from repo secrets into `.env` at build time.
 
 ## Theme Colors
 - `PrimaryAccentAmber` — `#f59e0b` (CTAs, highlights)
@@ -173,12 +181,12 @@ After any successful auth tier, creates `UserSessionEntity` in Room and updates 
 
 | Email | Password | Role |
 |-------|----------|------|
-| `spam.iamshivanshcoder@gmail.com` | `admin` | admin |
+| `spam.iamshivanshcoder@gmail.com` | `12345678` | admin |
 | `exammanager@gmail.com` | `manager` | admin |
 | `student@school.edu` | `student` | user |
 | `testuser@gmail.com` | `12345678` | user |
 
-To generate a SHA-256 hash for a new password: `echo -n "yourpassword" | sha256sum`
+**Note:** Passwords are NOT stored in JSON. Firebase handles all authentication. The JSON `admins` list is purely for role determination. Accounts must be created in the Firebase Console first.
 
 ## Firebase Setup (Optional)
 1. Create project at [Firebase Console](https://console.firebase.google.com/)
@@ -196,10 +204,7 @@ to direct download: `https://docs.google.com/uc?export=download&id=FILE_ID`
 ```json
 {
   "whitelist": ["email1@gmail.com", "email2@gmail.com"],
-  "users": {
-    "email1@gmail.com": "sha256_hex_hash_of_password",
-    "email2@gmail.com": "sha256_hex_hash_of_password"
-  },
+  "admins": ["admin1@gmail.com"],
   "pdfs": [
     {
       "id": "unique_id",
@@ -238,4 +243,4 @@ to direct download: `https://docs.google.com/uc?export=download&id=FILE_ID`
 - Bottom navigation bar is hidden on login, attempt, and pdf_viewer screens
 - Sync state auto-clears after 4 seconds in SettingsScreen
 - User credentials stored in SharedPreferences as serialized map (`key::value;;key::value`)
-- Login auth chain: Firebase REST API → JSON SHA-256 hash → Per-device SharedPreferences
+- Login auth chain: Firebase REST API → JSON admin list for role → session created
