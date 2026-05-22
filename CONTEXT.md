@@ -148,6 +148,8 @@ After any successful auth tier, creates `UserSessionEntity` in Room and updates 
 ### Added:
 11. **Centralized user credentials** — `users` map in `prep_database.json` with SHA-256 hashed passwords; synced, seeded, verified at login
 12. **Firebase Authentication** — Via REST API (no google-services.json needed). Optional: set `FIREBASE_API_KEY` in `.env` to enable. Falls back gracefully to JSON/SharedPreferences auth
+13. **Build fix** — `FIREBASE_API_KEY` in `.env.example` uses a placeholder string (not empty) to prevent Secrets Gradle Plugin from generating invalid Java
+14. **AuthRepository refactor** — Uses direct `BuildConfig.FIREBASE_API_KEY` with `.takeIf` filter (skips placeholder values starting with `YOUR_`) instead of fragile reflection
 
 ## Theme Colors
 - `PrimaryAccentAmber` — `#f59e0b` (CTAs, highlights)
@@ -161,7 +163,7 @@ After any successful auth tier, creates `UserSessionEntity` in Room and updates 
 1. Open in Android Studio → let it auto-fix imports
 2. Create `.env` file from `.env.example` with:
    - `GEMINI_API_KEY=your_key` (required for Gemini AI)
-   - `FIREBASE_API_KEY=your_key` (optional; enables Firebase Auth)
+   - `FIREBASE_API_KEY=your_key` (optional; enables Firebase Auth; MUST be non-empty placeholder to avoid build error)
 3. Remove `signingConfig = signingConfigs.getByName("debugConfig")` from `app/build.gradle.kts`
 4. Run on emulator/device
 5. Set up GitHub Gist with `prep_database.json` (see `prep_database.json` template in project root)
