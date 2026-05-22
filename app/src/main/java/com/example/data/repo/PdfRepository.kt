@@ -22,7 +22,7 @@ class PdfRepository(
     fun getRemoteConfigUrl(): String {
         return sharedPrefs.getString(
             "remote_config_url",
-            "https://raw.githubusercontent.com/aistudio-templates/mock-data/main/exam_prep_config.json" // Default URL showing instructions
+            "https://raw.githubusercontent.com/IamShivanshCoder/prepmaster/refs/heads/main/prep_database.json"
         ) ?: ""
     }
 

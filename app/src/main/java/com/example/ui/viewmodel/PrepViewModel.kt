@@ -139,7 +139,9 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         viewModelScope.launch {
-            pdfRepository.seedDatabaseIfEmpty()
+            // Always sync remote config on startup so papers resolve from the remote JSON
+            val url = pdfRepository.getRemoteConfigUrl()
+            pdfRepository.syncRemoteConfig(url)
             _isLibraryLoading.value = false
             _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
             _configUrlInput.value = pdfRepository.getRemoteConfigUrl()
