@@ -48,8 +48,18 @@ class AuthRepository(
         }
     }
 
+    // Check if email is in the JSON users map (admin list)
+    fun isUserInSyncedUsers(email: String): Boolean {
+        return pdfRepository.getSyncedUsers().containsKey(email.trim().lowercase())
+    }
+
     // Key Login validation function: validates against the synced Whitelist
-    suspend fun tryLoginWithGoogleEmail(email: String, name: String = "Shivansh"): Result<UserSessionEntity> {
+    // authenticatedByFirebase: when true, admin = in JSON users map, else regular user
+    suspend fun tryLoginWithGoogleEmail(
+        email: String,
+        name: String = "Shivansh",
+        authenticatedByFirebase: Boolean = false
+    ): Result<UserSessionEntity> {
         val trimmedEmail = email.trim().lowercase()
         if (trimmedEmail.isEmpty()) {
             return Result.failure(Exception("Email cannot be empty"))
@@ -59,7 +69,7 @@ class AuthRepository(
         
         Log.d("AuthRepository", "Verifying login for $trimmedEmail against whitelist entries: $allowedEmails")
 
-        val role = getWhitelistedEmailRole(trimmedEmail, allowedEmails)
+        val role = getWhitelistedEmailRole(trimmedEmail, allowedEmails, authenticatedByFirebase)
 
         if (role != null) {
             val session = UserSessionEntity(
@@ -77,9 +87,25 @@ class AuthRepository(
         }
     }
 
-    private fun getWhitelistedEmailRole(email: String, whitelistedSet: Set<String>): String? {
+    private fun getWhitelistedEmailRole(
+        email: String,
+        whitelistedSet: Set<String>,
+        authenticatedByFirebase: Boolean
+    ): String? {
         val search = email.trim().lowercase()
-        
+
+        if (authenticatedByFirebase) {
+            // Firebase authenticated: admin if in JSON users map, else regular user
+            if (isUserInSyncedUsers(search)) return "admin"
+            // Must still be whitelisted to proceed as regular user
+            for (entry in whitelistedSet) {
+                val cleaned = entry.trim().lowercase()
+                if (cleaned == search || cleaned.startsWith("$search:")) return "user"
+            }
+            return null
+        }
+
+        // Non-Firebase auth (JSON/SP fallback): existing logic
         if (search == "spam.iamshivanshcoder@gmail.com") {
             return "admin"
         }

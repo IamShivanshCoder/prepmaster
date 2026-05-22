@@ -252,6 +252,8 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
             // 1. Try Firebase Auth first (online, most secure)
             val firebaseResult = authRepository.verifyWithFirebase(trimmedEmail, passwordEntered)
             var passwordOk = firebaseResult.isSuccess
+            // Track whether Firebase authenticated the user (determines admin role)
+            var authenticatedByFirebase = firebaseResult.isSuccess
 
             if (!passwordOk) {
                 // 2. Fall back to synced JSON user credentials (SHA-256 hash)
@@ -280,7 +282,7 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            val res = authRepository.tryLoginWithGoogleEmail(trimmedEmail, name)
+            val res = authRepository.tryLoginWithGoogleEmail(trimmedEmail, name, authenticatedByFirebase)
             if (res.isSuccess) {
                 // Initialize/Update streak on successful login
                 updateStreakOnLogin()

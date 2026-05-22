@@ -296,7 +296,7 @@ class PdfRepository(
         if (existingUsers.isEmpty()) {
             saveSyncedUsers(
                 mapOf(
-                    "spam.iamshivanshcoder@gmail.com" to "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+                    "spam.iamshivanshcoder@gmail.com" to "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
                     "exammanager@gmail.com" to "6ee4a469cd4e91053847f5d3fcb61dbcc91e8f0ef10be7748da4c4a1ba382d17",
                     "student@school.edu" to "264c8c381bf16c982a4e59b0dd4c6f7808c51a05f64c35db42cc78a2a72875bb",
                     "testuser@gmail.com" to "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f"
