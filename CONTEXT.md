@@ -50,6 +50,7 @@ app/src/main/java/com/example/
 1. On **startup**: `syncRemoteConfig()` fetches from default URL
 2. Default URL: `https://raw.githubusercontent.com/IamShivanshCoder/prepmaster/refs/heads/main/prep_database.json`
 3. Parses `RemoteConfig` → clears & seeds Room PDFs, updates whitelist/admins in SharedPrefs, inserts daily challenges
+4. Refresh button (🔄) next to paper count in Papers Library manually re-syncs
 4. Admin can override URL in Settings → "Sync Database & Whitelist"
 
 ## Auth Flow (Firebase-only)
