@@ -1,6 +1,7 @@
 package com.example.data.net
 
 import com.squareup.moshi.Json
+import com.squareup.moshi.JsonClass
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -11,6 +12,7 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 import java.util.concurrent.TimeUnit
 
+@JsonClass(generateAdapter = true)
 data class FirebaseSignInResponse(
     @Json(name = "idToken") val idToken: String? = null,
     @Json(name = "email") val email: String? = null,
@@ -18,6 +20,7 @@ data class FirebaseSignInResponse(
     @Json(name = "error") val error: FirebaseErrorBody? = null
 )
 
+@JsonClass(generateAdapter = true)
 data class FirebaseErrorBody(
     @Json(name = "code") val code: Int = 0,
     @Json(name = "message") val message: String = ""
