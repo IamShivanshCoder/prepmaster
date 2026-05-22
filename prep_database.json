@@ -10,16 +10,7 @@
     "exammanager@gmail.com"
   ],
   "pdfs": [
-    {
-      "id": "chem_reaction_2025",
-      "title": "2025 Organic Chemistry Core Reactions Sheet",
-      "subject": "Chemistry",
-      "category": "Formula Sheets",
-      "exam_type": "pdf",
-      "year": "2025",
-      "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
-      "size": "1.2 MB"
-    },
+   
     {
       "id": "math_mock_p2",
       "title": "2024 National Mathematics Advanced Prep Paper 2",
