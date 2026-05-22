@@ -10,8 +10,26 @@
     "exammanager@gmail.com"
   ],
   "pdfs": [
-   
- 
+    {
+      "id": "jee_22jan2025_shift1",
+      "title": "JEE Main 22 Jan 2025 Shift 1",
+      "subject": "All Subjects",
+      "category": "Past Papers",
+      "exam_type": "pdf",
+      "year": "2025",
+      "url": "https://nta.ac.in/Download/ExamPaper/Paper_20250715180225.pdf",
+      "size": "8.5 MB"
+    },
+    {
+      "id": "jee_03apr2025_shift1",
+      "title": "JEE Main 3 April 2025 Shift 1",
+      "subject": "All Subjects",
+      "category": "Past Papers",
+      "exam_type": "pdf",
+      "year": "2025",
+      "url": "https://nta.ac.in/Download/ExamPaper/Paper_20250715182146.pdf",
+      "size": "9.2 MB"
+    },
     {
       "id": "phys_notes_2025",
       "title": "2025 Physics Summary Notes — All Topics",

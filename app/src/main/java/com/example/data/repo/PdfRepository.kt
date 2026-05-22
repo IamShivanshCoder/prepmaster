@@ -180,6 +180,26 @@ class PdfRepository(
         Log.d("PdfRepository", "Seeding initial local database with prep materials")
         val sampleItems = listOf(
             PdfItemEntity(
+                id = "jee_22jan2025_shift1",
+                title = "JEE Main 22 Jan 2025 Shift 1",
+                subject = "All Subjects",
+                category = "Past Papers",
+                examType = "pdf",
+                year = "2025",
+                url = "https://nta.ac.in/Download/ExamPaper/Paper_20250715180225.pdf",
+                size = "8.5 MB"
+            ),
+            PdfItemEntity(
+                id = "jee_03apr2025_shift1",
+                title = "JEE Main 3 April 2025 Shift 1",
+                subject = "All Subjects",
+                category = "Past Papers",
+                examType = "pdf",
+                year = "2025",
+                url = "https://nta.ac.in/Download/ExamPaper/Paper_20250715182146.pdf",
+                size = "9.2 MB"
+            ),
+            PdfItemEntity(
                 id = "math_2025_board",
                 title = "2025 National Mathematics Mock Exam Prep",
                 subject = "Mathematics",
