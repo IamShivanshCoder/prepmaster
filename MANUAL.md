@@ -11,6 +11,7 @@ Welcome to **PrepMaster**, your high-fidelity, secure exam preparation applicati
 4. [Setting Up Your Free Online Database (GitHub Gist)](#4-setting-up-your-free-online-database-github-gist)
 5. [Hosting PDFs on Google Drive for Free](#5-hosting-pdfs-on-google-drive-for-free)
 6. [Updating the App (Synchronizing)](#6-updating-the-app-synchronizing)
+7. [Firebase Authentication (Optional)](#7-firebase-authentication-optional)
 
 ---
 
@@ -157,6 +158,55 @@ Once your custom JSON database is configured online:
 4. Input your Raw Gist/GitHub JSON link in the input box.
 5. Tap **Verify & Dynamic Cache Sync**.
 6. The sync state dialog will verify the server file, download all materials, and securely update student permissions on-the-fly!
+
+---
+
+---
+
+## 7. Firebase Authentication (Optional)
+
+For production deployments, PrepMaster supports **Firebase Authentication** for secure, centralized password management — no more manual SHA-256 hashing.
+
+### How it works
+1. On login, the app calls Firebase's secure REST API to verify the email + password
+2. If Firebase is unavailable or not configured, the app **automatically falls back** to local JSON-based password verification
+3. This means existing users are never locked out
+
+### Setup Steps
+
+1. **Create a Firebase Project**
+   - Go to [Firebase Console](https://console.firebase.google.com/)
+   - Click **Create a project** (or use an existing one)
+
+2. **Enable Email/Password Authentication**
+   - In your Firebase project, go to **Authentication** → **Sign-in method**
+   - Click **Email/Password** and enable it
+   - Click **Save**
+
+3. **Add users manually** (or let them sign up via Firebase console)
+   - In **Authentication** → **Users** tab
+   - Click **Add user** and enter their email + password
+   - These credentials will be used to log into the app
+
+4. **Get your Web API Key**
+   - Go to **Project Settings** → **General**
+   - Under **Your apps**, copy the **Web API Key** (e.g. `AIzaSyA1B2C3D4E5F6G7H8I9J0K`)
+
+5. **Configure the app**
+   - Open the `.env` file in the project folder
+   - Set: `FIREBASE_API_KEY=AIzaSyA1B2C3D4E5F6G7H8I9J0K`
+   - (Replace with your actual API key from step 4)
+
+### Security Benefits over JSON approach
+- **Hashed passwords server-side** — Firebase never transmits plaintext passwords
+- **Rate limiting** — Firebase blocks brute force attempts automatically
+- **Account recovery** — Built-in password reset via email
+- **No shared secrets** — API key can be restricted to your app's bundle ID
+
+### Important Notes
+- Firebase Auth requires internet connectivity for login. If offline, the app falls back to the local JSON `users` map (SHA-256 hashed).
+- The **whitelist** and **PDF sync** features continue to work regardless of which auth method is used.
+- You can **mix** Firebase users (created in Firebase console) with JSON users (in `prep_database.json`) — the app checks both.
 
 ---
 

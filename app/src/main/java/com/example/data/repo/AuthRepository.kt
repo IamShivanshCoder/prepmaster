@@ -1,18 +1,53 @@
 package com.example.data.repo
 
+import android.content.Context
 import android.util.Log
 import com.example.data.db.SessionDao
 import com.example.data.db.UserSessionEntity
+import com.example.data.net.FirebaseAuthService
 import kotlinx.coroutines.flow.Flow
 
 class AuthRepository(
+    private val context: Context,
     private val sessionDao: SessionDao,
     private val pdfRepository: PdfRepository
 ) {
+    private val firebaseAuthService = FirebaseAuthService.create()
+    private val firebaseApiKey: String? = try {
+        val cls = Class.forName("${context.packageName}.BuildConfig")
+        cls.getField("FIREBASE_API_KEY").get(null) as? String
+    } catch (e: Exception) { null }
+
     // Flow observing the currently active session
     val activeSessionFlow: Flow<UserSessionEntity?> = sessionDao.getActiveSessionFlow()
 
     suspend fun getActiveSession(): UserSessionEntity? = sessionDao.getActiveSession()
+
+    // Verify credentials using Firebase Auth REST API (online)
+    // Returns true if Firebase is configured and auth succeeds
+    suspend fun verifyWithFirebase(email: String, password: String): Result<Boolean> {
+        val apiKey = firebaseApiKey ?: return Result.failure(Exception("Firebase not configured"))
+        if (apiKey.isBlank()) return Result.failure(Exception("Firebase API key not set"))
+
+        return try {
+            val response = firebaseAuthService.signInWithPassword(
+                apiKey = apiKey,
+                email = email,
+                password = password
+            )
+            if (response.idToken != null) {
+                Log.d("AuthRepository", "Firebase auth succeeded for $email")
+                Result.success(true)
+            } else {
+                val msg = response.error?.message ?: "Authentication failed"
+                Log.d("AuthRepository", "Firebase auth failed for $email: $msg")
+                Result.failure(Exception(msg))
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Firebase network error: ${e.message}")
+            Result.failure(e)
+        }
+    }
 
     // Key Login validation function: validates against the synced Whitelist
     suspend fun tryLoginWithGoogleEmail(email: String, name: String = "Shivansh"): Result<UserSessionEntity> {
@@ -35,7 +70,6 @@ class AuthRepository(
                 loginTime = System.currentTimeMillis(),
                 role = role
             )
-            // Save inside local Room database so the login is saved offline
             sessionDao.saveSession(session)
             return Result.success(session)
         } else {
@@ -57,7 +91,7 @@ class AuthRepository(
         for (entry in whitelistedSet) {
             val cleaned = entry.trim().lowercase()
             if (cleaned == search) {
-                return "user" // Exact matches without role suffix default to "user"
+                return "user"
             }
             if (cleaned.startsWith("$search:")) {
                 val parsedRole = cleaned.substringAfter(":", "user")

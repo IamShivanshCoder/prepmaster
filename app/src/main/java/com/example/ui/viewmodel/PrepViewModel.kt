@@ -34,7 +34,7 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
     val pdfRepository = PdfRepository(application, db.pdfDao())
-    val authRepository = AuthRepository(db.sessionDao(), pdfRepository)
+    val authRepository = AuthRepository(application, db.sessionDao(), pdfRepository)
     private val statsDao = db.statsDao()
 
     // Active session flow
@@ -249,30 +249,35 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            // Check against synced user credentials (from remote JSON)
-            val syncedUsers = pdfRepository.getSyncedUsers()
-            val syncedHash = syncedUsers[trimmedEmail]
-            val enteredHash = sha256(passwordEntered)
+            // 1. Try Firebase Auth first (online, most secure)
+            val firebaseResult = authRepository.verifyWithFirebase(trimmedEmail, passwordEntered)
+            var passwordOk = firebaseResult.isSuccess
 
-            if (syncedHash != null) {
-                // User exists in centralized credential store — verify hash
-                if (syncedHash != enteredHash) {
-                    onCompleted(Result.failure(Exception("Incorrect password for this account.")))
-                    return@launch
-                }
-            } else {
-                // Fallback: per-device password (backward compat for local-only users)
-                val prefs = getApplication<android.app.Application>().getSharedPreferences("preppapers_auth_pref", android.content.Context.MODE_PRIVATE)
-                val storedPassword = prefs.getString("pwd_$trimmedEmail", null)
+            if (!passwordOk) {
+                // 2. Fall back to synced JSON user credentials (SHA-256 hash)
+                val syncedUsers = pdfRepository.getSyncedUsers()
+                val syncedHash = syncedUsers[trimmedEmail]
+                val enteredHash = sha256(passwordEntered)
 
-                if (storedPassword == null) {
-                    prefs.edit().putString("pwd_$trimmedEmail", passwordEntered).apply()
+                if (syncedHash != null) {
+                    passwordOk = syncedHash == enteredHash
                 } else {
-                    if (storedPassword != passwordEntered) {
-                        onCompleted(Result.failure(Exception("Incorrect password for this account. Please enter correct credentials.")))
-                        return@launch
+                    // 3. Last resort: per-device password (backward compat)
+                    val prefs = getApplication<android.app.Application>().getSharedPreferences("preppapers_auth_pref", android.content.Context.MODE_PRIVATE)
+                    val storedPassword = prefs.getString("pwd_$trimmedEmail", null)
+
+                    if (storedPassword == null) {
+                        prefs.edit().putString("pwd_$trimmedEmail", passwordEntered).apply()
+                        passwordOk = true
+                    } else {
+                        passwordOk = storedPassword == passwordEntered
                     }
                 }
+            }
+
+            if (!passwordOk) {
+                onCompleted(Result.failure(Exception("Incorrect password for this account.")))
+                return@launch
             }
 
             val res = authRepository.tryLoginWithGoogleEmail(trimmedEmail, name)
