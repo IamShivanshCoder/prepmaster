@@ -43,14 +43,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        lifecycle.addObserver(object : androidx.lifecycle.LifecycleEventObserver {
-            override fun onStateChanged(source: androidx.lifecycle.LifecycleOwner, event: androidx.lifecycle.Lifecycle.Event) {
-                if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                    viewModel.refreshData()
-                }
-            }
-        })
-
         setContent {
             MyApplicationTheme {
                 MainAppContainer(viewModel = viewModel)

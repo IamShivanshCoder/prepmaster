@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
@@ -126,19 +127,32 @@ fun PapersLibraryScreen(
                 color = Color.White
             )
 
-            // Dynamic Counter
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(30.dp))
-                    .background(PrimaryAccentAmber.copy(alpha = 0.15f))
-                    .padding(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Text(
-                    text = "${filteredPdfs.size} papers indexed",
-                    color = PrimaryAccentAmber,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold
-                )
+            // Dynamic Counter + Refresh button
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(PrimaryAccentAmber.copy(alpha = 0.15f))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = "${filteredPdfs.size} papers indexed",
+                        color = PrimaryAccentAmber,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                IconButton(
+                    onClick = { viewModel.refreshData() },
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = "Refresh papers",
+                        tint = PrimaryAccentAmber,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
 

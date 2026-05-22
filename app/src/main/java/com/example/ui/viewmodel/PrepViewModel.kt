@@ -137,12 +137,12 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
 
     private var examTimerJob: Job? = null
 
-    private var periodicRefreshJob: Job? = null
-
     init {
         viewModelScope.launch {
-            refreshData()
-            startPeriodicRefresh()
+            pdfRepository.seedDatabaseIfEmpty()
+            _isLibraryLoading.value = false
+            _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
+            _configUrlInput.value = pdfRepository.getRemoteConfigUrl()
 
             // Check session
             val session = authRepository.getActiveSession()
@@ -307,17 +307,6 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
             _whitelistedEmails.value = pdfRepository.getWhitelistedEmails()
             _isLibraryLoading.value = false
             loadDailyChallengeForToday()
-        }
-    }
-
-    private fun startPeriodicRefresh() {
-        periodicRefreshJob?.cancel()
-        periodicRefreshJob = viewModelScope.launch {
-            while (isActive) {
-                delay(300_000)
-                val url = pdfRepository.getRemoteConfigUrl()
-                pdfRepository.syncRemoteConfig(url)
-            }
         }
     }
 
