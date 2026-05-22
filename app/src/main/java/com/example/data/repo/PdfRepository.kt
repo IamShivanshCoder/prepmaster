@@ -31,11 +31,11 @@ class PdfRepository(
         sharedPrefs.edit().putString("remote_config_url", url).apply()
     }
 
-    // Get cached whitelist emails (from whitelist list + users map keys)
+    // Get cached whitelist emails (from whitelist list + admin list)
     fun getWhitelistedEmails(): Set<String> {
         val fromWhitelist = sharedPrefs.getStringSet("whitelisted_emails", setOf()) ?: setOf()
-        val fromUsers = getSyncedUsers().keys
-        val merged = fromWhitelist + fromUsers
+        val fromAdmins = getAdminEmails()
+        val merged = fromWhitelist + fromAdmins
         if (merged.isEmpty()) {
             return setOf(
                 "spam.iamshivanshcoder@gmail.com",
@@ -51,22 +51,13 @@ class PdfRepository(
         sharedPrefs.edit().putStringSet("whitelisted_emails", emails).apply()
     }
 
-    // Get synced user credentials map (email -> password_hash)
-    fun getSyncedUsers(): Map<String, String> {
-        val json = sharedPrefs.getString("synced_users", "") ?: ""
-        if (json.isBlank()) return emptyMap()
-        return try {
-            val pairs = json.split(";;").mapNotNull { entry ->
-                val parts = entry.split("::", limit = 2)
-                if (parts.size == 2) parts[0] to parts[1] else null
-            }
-            pairs.toMap()
-        } catch (e: Exception) { emptyMap() }
+    // Admin emails list (no passwords stored — purely for role determination)
+    fun getAdminEmails(): Set<String> {
+        return sharedPrefs.getStringSet("admin_emails", setOf()) ?: setOf()
     }
 
-    fun saveSyncedUsers(users: Map<String, String>) {
-        val json = users.entries.joinToString(";;") { "${it.key}::${it.value}" }
-        sharedPrefs.edit().putString("synced_users", json).apply()
+    fun saveAdminEmails(emails: Set<String>) {
+        sharedPrefs.edit().putStringSet("admin_emails", emails).apply()
     }
 
     // Observables from Local Database
@@ -118,10 +109,11 @@ class PdfRepository(
                 Log.d("PdfRepository", "Synced ${remoteConfig.whitelist.size} allowed accounts from online whitelist")
             }
 
-            // 2.5 Process user credentials (email -> hashed password)
-            if (remoteConfig.users.isNotEmpty()) {
-                saveSyncedUsers(remoteConfig.users)
-                Log.d("PdfRepository", "Synced ${remoteConfig.users.size} user credentials from online source")
+            // 2.5 Process admin emails (from `admins` list or backward compat `users` map keys)
+            val adminEmails = remoteConfig.resolveAdminEmails()
+            if (adminEmails.isNotEmpty()) {
+                saveAdminEmails(adminEmails.toSet())
+                Log.d("PdfRepository", "Synced ${adminEmails.size} admin emails from remote config")
             }
 
             // 3. Process daily challenges
@@ -291,15 +283,13 @@ class PdfRepository(
 
         pdfDao.insertPdfItems(sampleItems)
 
-        // Seed default user credentials so login works out of the box without remote sync
-        val existingUsers = getSyncedUsers()
-        if (existingUsers.isEmpty()) {
-            saveSyncedUsers(
-                mapOf(
-                    "spam.iamshivanshcoder@gmail.com" to "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
-                    "exammanager@gmail.com" to "6ee4a469cd4e91053847f5d3fcb61dbcc91e8f0ef10be7748da4c4a1ba382d17",
-                    "student@school.edu" to "264c8c381bf16c982a4e59b0dd4c6f7808c51a05f64c35db42cc78a2a72875bb",
-                    "testuser@gmail.com" to "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f"
+        // Seed default admin emails (no passwords stored — Firebase handles all auth)
+        val existingAdmins = getAdminEmails()
+        if (existingAdmins.isEmpty()) {
+            saveAdminEmails(
+                setOf(
+                    "spam.iamshivanshcoder@gmail.com",
+                    "exammanager@gmail.com"
                 )
             )
         }

@@ -32,6 +32,11 @@ data class RemoteDailyChallenge(
 data class RemoteConfig(
     @Json(name = "whitelist") val whitelist: List<String> = emptyList(),
     @Json(name = "users") val users: Map<String, String> = emptyMap(),
+    @Json(name = "admins") val admins: List<String> = emptyList(),
     @Json(name = "pdfs") val pdfs: List<RemotePdfItem> = emptyList(),
     @Json(name = "daily_challenges") val dailyChallenges: List<RemoteDailyChallenge> = emptyList()
-)
+) {
+    // Resolve admin emails: prefer new `admins` list, fall back to old `users` map keys for backward compat
+    fun resolveAdminEmails(): List<String> =
+        if (admins.isNotEmpty()) admins else users.keys.toList()
+}

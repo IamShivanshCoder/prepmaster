@@ -8,7 +8,6 @@ import com.example.data.repo.AuthRepository
 import com.example.data.repo.PdfRepository
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -236,55 +235,16 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         viewModelScope.launch {
-            // Check whitelist or if is a hardcoded admin
-            val allowedEmails = pdfRepository.getWhitelistedEmails()
-            val cleanAllowed = allowedEmails.map { it.trim().lowercase() }.toSet()
-            
-            val isWhitelisted = cleanAllowed.any { 
-                it == trimmedEmail || it.startsWith("$trimmedEmail:") 
-            } || trimmedEmail == "spam.iamshivanshcoder@gmail.com" || trimmedEmail == "exammanager@gmail.com"
-
-            if (!isWhitelisted) {
-                onCompleted(Result.failure(Exception("The account '$trimmedEmail' is not authorized to use the portal.")))
-                return@launch
-            }
-
-            // 1. Try Firebase Auth first (online, most secure)
+            // Firebase is the single source of truth for authentication.
+            // The JSON file stores ONLY an admin list — no passwords, no hashes.
             val firebaseResult = authRepository.verifyWithFirebase(trimmedEmail, passwordEntered)
-            var passwordOk = firebaseResult.isSuccess
-            // Track whether Firebase authenticated the user (determines admin role)
-            var authenticatedByFirebase = firebaseResult.isSuccess
-
-            if (!passwordOk) {
-                // 2. Fall back to synced JSON user credentials (SHA-256 hash)
-                val syncedUsers = pdfRepository.getSyncedUsers()
-                val syncedHash = syncedUsers[trimmedEmail]
-                val enteredHash = sha256(passwordEntered)
-
-                if (syncedHash != null) {
-                    passwordOk = syncedHash == enteredHash
-                } else {
-                    // 3. Last resort: per-device password (backward compat)
-                    val prefs = getApplication<android.app.Application>().getSharedPreferences("preppapers_auth_pref", android.content.Context.MODE_PRIVATE)
-                    val storedPassword = prefs.getString("pwd_$trimmedEmail", null)
-
-                    if (storedPassword == null) {
-                        prefs.edit().putString("pwd_$trimmedEmail", passwordEntered).apply()
-                        passwordOk = true
-                    } else {
-                        passwordOk = storedPassword == passwordEntered
-                    }
-                }
-            }
-
-            if (!passwordOk) {
-                onCompleted(Result.failure(Exception("Incorrect password for this account.")))
+            if (firebaseResult.isFailure) {
+                onCompleted(Result.failure(Exception("Authentication failed. Check your credentials or contact admin.")))
                 return@launch
             }
 
-            val res = authRepository.tryLoginWithGoogleEmail(trimmedEmail, name, authenticatedByFirebase)
+            val res = authRepository.tryLoginWithGoogleEmail(trimmedEmail, name, authenticatedByFirebase = true)
             if (res.isSuccess) {
-                // Initialize/Update streak on successful login
                 updateStreakOnLogin()
                 navigateTo("dashboard")
             }
@@ -617,9 +577,4 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun sha256(input: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        return digest.digest(input.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it) }
-    }
 }

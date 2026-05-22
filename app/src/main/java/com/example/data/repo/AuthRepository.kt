@@ -48,13 +48,13 @@ class AuthRepository(
         }
     }
 
-    // Check if email is in the JSON users map (admin list)
-    fun isUserInSyncedUsers(email: String): Boolean {
-        return pdfRepository.getSyncedUsers().containsKey(email.trim().lowercase())
+    // Check if email is in the admin list
+    fun isAdminUser(email: String): Boolean {
+        return pdfRepository.getAdminEmails().contains(email.trim().lowercase())
     }
 
-    // Key Login validation function: validates against the synced Whitelist
-    // authenticatedByFirebase: when true, admin = in JSON users map, else regular user
+    // Creates a user session after Firebase authentication verifies credentials.
+    // Role is determined by admin list: in admins → admin, otherwise → user.
     suspend fun tryLoginWithGoogleEmail(
         email: String,
         name: String = "Shivansh",
@@ -66,59 +66,31 @@ class AuthRepository(
         }
 
         val allowedEmails = pdfRepository.getWhitelistedEmails()
-        
-        Log.d("AuthRepository", "Verifying login for $trimmedEmail against whitelist entries: $allowedEmails")
 
-        val role = getWhitelistedEmailRole(trimmedEmail, allowedEmails, authenticatedByFirebase)
-
-        if (role != null) {
-            val session = UserSessionEntity(
-                email = trimmedEmail,
-                displayName = if (trimmedEmail == "spam.iamshivanshcoder@gmail.com") "Shivansh" else name,
-                loginTime = System.currentTimeMillis(),
-                role = role
-            )
-            sessionDao.saveSession(session)
-            return Result.success(session)
+        val role = if (authenticatedByFirebase) {
+            // Firebase authenticated: admin if in admin list, else user
+            if (isAdminUser(trimmedEmail)) "admin" else "user"
         } else {
+            // Non-Firebase fallback (should not occur in new flow — kept for safety)
+            if (trimmedEmail == "spam.iamshivanshcoder@gmail.com") "admin" else "user"
+        }
+
+        // Check whitelist authorization
+        val isAllowed = allowedEmails.any { it.trim().lowercase() == trimmedEmail }
+        if (!isAllowed && role != "admin") {
             return Result.failure(
                 Exception("The account '$trimmedEmail' is not authorized to use the PrepPapers study portal.")
             )
         }
-    }
 
-    private fun getWhitelistedEmailRole(
-        email: String,
-        whitelistedSet: Set<String>,
-        authenticatedByFirebase: Boolean
-    ): String? {
-        val search = email.trim().lowercase()
-
-        if (authenticatedByFirebase) {
-            // Firebase authenticated: admin if in JSON users map, else regular user
-            if (isUserInSyncedUsers(search)) return "admin"
-            // Must still be whitelisted to proceed as regular user
-            for (entry in whitelistedSet) {
-                val cleaned = entry.trim().lowercase()
-                if (cleaned == search || cleaned.startsWith("$search:")) return "user"
-            }
-            return null
-        }
-
-        // Non-Firebase auth (JSON/SP fallback): existing logic
-        if (search == "spam.iamshivanshcoder@gmail.com") {
-            return "admin"
-        }
-
-        for (entry in whitelistedSet) {
-            val cleaned = entry.trim().lowercase()
-            if (cleaned == search) return "user"
-            if (cleaned.startsWith("$search:")) {
-                val parsedRole = cleaned.substringAfter(":", "user")
-                return if (parsedRole.isNotBlank()) parsedRole else "user"
-            }
-        }
-        return null
+        val session = UserSessionEntity(
+            email = trimmedEmail,
+            displayName = if (trimmedEmail == "spam.iamshivanshcoder@gmail.com") "Shivansh" else name,
+            loginTime = System.currentTimeMillis(),
+            role = role
+        )
+        sessionDao.saveSession(session)
+        return Result.success(session)
     }
 
     suspend fun logout() {
