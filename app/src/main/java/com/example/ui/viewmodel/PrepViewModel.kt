@@ -239,7 +239,8 @@ class PrepViewModel(application: Application) : AndroidViewModel(application) {
             // The JSON file stores ONLY an admin list — no passwords, no hashes.
             val firebaseResult = authRepository.verifyWithFirebase(trimmedEmail, passwordEntered)
             if (firebaseResult.isFailure) {
-                onCompleted(Result.failure(Exception("Authentication failed. Check your credentials or contact admin.")))
+                val msg = firebaseResult.exceptionOrNull()?.message ?: "Authentication failed"
+                onCompleted(Result.failure(Exception(msg)))
                 return@launch
             }
 

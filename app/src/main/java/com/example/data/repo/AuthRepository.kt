@@ -65,22 +65,12 @@ class AuthRepository(
             return Result.failure(Exception("Email cannot be empty"))
         }
 
-        val allowedEmails = pdfRepository.getWhitelistedEmails()
-
         val role = if (authenticatedByFirebase) {
             // Firebase authenticated: admin if in admin list, else user
             if (isAdminUser(trimmedEmail)) "admin" else "user"
         } else {
             // Non-Firebase fallback (should not occur in new flow — kept for safety)
             if (trimmedEmail == "spam.iamshivanshcoder@gmail.com") "admin" else "user"
-        }
-
-        // Check whitelist authorization
-        val isAllowed = allowedEmails.any { it.trim().lowercase() == trimmedEmail }
-        if (!isAllowed && role != "admin") {
-            return Result.failure(
-                Exception("The account '$trimmedEmail' is not authorized to use the PrepPapers study portal.")
-            )
         }
 
         val session = UserSessionEntity(
